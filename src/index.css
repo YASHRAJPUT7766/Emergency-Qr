@@ -1,0 +1,64 @@
+:root {
+  --ink: #1A2332;
+  --ink-soft: #4A5568;
+  --paper: #F7F7F5;
+  --paper-raised: #FFFFFF;
+  --line: #E2E2DE;
+  --red: #D32F2F;
+  --red-dark: #B71C1C;
+  --red-tint: #FDECEA;
+  --amber: #F5A623;
+  --green: #2E7D4F;
+  --green-tint: #EAF5EE;
+  --radius: 14px;
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { min-height: 100vh; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+a { color: inherit; }
+
+input, select {
+  font-family: inherit;
+  font-size: 15px;
+}
+
+::selection { background: var(--red); color: white; }
+
+:focus-visible {
+  outline: 2.5px solid var(--red);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
