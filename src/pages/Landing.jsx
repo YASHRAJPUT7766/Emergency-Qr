@@ -60,7 +60,7 @@ export default function Landing() {
             {[
               { n: '01', t: 'Add your details', d: 'Name, blood group, and 2–3 emergency contacts.' },
               { n: '02', t: 'Get your QR', d: 'Print it, stick it on anything you carry.' },
-              { n: '03', t: 'Scanned = alerted', d: 'Finder taps one button, contacts get SMS + WhatsApp instantly.' },
+              { n: '03', t: 'Scanned = alerted', d: 'Finder taps one button — contacts get SMS, WhatsApp, and a loud siren push alert instantly.' },
             ].map(s => (
               <div key={s.n} style={{
                 padding: 20, background: 'white', borderRadius: 12, border: '1px solid var(--line)'

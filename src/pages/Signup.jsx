@@ -16,7 +16,7 @@ export default function Signup() {
     e.preventDefault();
     setError('');
     if (password.length < 6) {
-      setError('Password kam se kam 6 characters ka hona chahiye.');
+      setError('Password must be at least 6 characters.');
       return;
     }
     setLoading(true);
@@ -28,7 +28,13 @@ export default function Signup() {
         name: '',
         bloodGroup: '',
         note: '',
+        allergies: '',
+        conditions: '',
+        medications: '',
         contacts: [],
+        contactTokens: [],
+        scanCount: 0,
+        responses: [],
         createdAt: serverTimestamp(),
       });
       navigate('/dashboard');
@@ -40,7 +46,7 @@ export default function Signup() {
   }
 
   return (
-    <AuthLayout title="Create your account" subtitle="Apna emergency profile banane ke liye signup karo.">
+    <AuthLayout title="Create your account" subtitle="Sign up to create your emergency profile.">
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Field label="Email">
           <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
@@ -48,7 +54,7 @@ export default function Signup() {
         </Field>
         <Field label="Password">
           <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
-            placeholder="Kam se kam 6 characters" style={inputStyle} />
+            placeholder="At least 6 characters" style={inputStyle} />
         </Field>
         {error && <div style={errorStyle}>{error}</div>}
         <button disabled={loading} type="submit" style={submitStyle}>
@@ -73,11 +79,11 @@ function Field({ label, children }) {
 
 function friendlyError(code) {
   const map = {
-    'auth/email-already-in-use': 'Ye email pehle se registered hai. Login try karo.',
-    'auth/invalid-email': 'Email address sahi format me nahi hai.',
-    'auth/weak-password': 'Password bahut weak hai.',
+    'auth/email-already-in-use': 'This email is already registered. Try logging in instead.',
+    'auth/invalid-email': 'That email address doesn\'t look right.',
+    'auth/weak-password': 'That password is too weak.',
   };
-  return map[code] || 'Kuch galat ho gaya. Dobara try karo.';
+  return map[code] || 'Something went wrong. Please try again.';
 }
 
 export const inputStyle = {

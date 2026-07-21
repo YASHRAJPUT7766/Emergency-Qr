@@ -20,14 +20,14 @@ export default function Login() {
       await signInWithEmailAndPassword(auth, email, password);
       navigate('/dashboard');
     } catch {
-      setError('Email ya password galat hai.');
+      setError('Incorrect email or password.');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <AuthLayout title="Welcome back" subtitle="Apne emergency profile me login karo.">
+    <AuthLayout title="Welcome back" subtitle="Log in to your emergency profile.">
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-soft)' }}>Email</span>
