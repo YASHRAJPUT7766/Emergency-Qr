@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { subscribeContactDevice } from '../lib/notifications';
+import { subscribeContactDevice, stopForegroundAlertLoop } from '../lib/notifications';
 
 export default function SubscribePage() {
   const { userId } = useParams();
@@ -28,6 +28,11 @@ export default function SubscribePage() {
         setStatus('notfound');
       }
     })();
+
+    // If this tab gets closed while a foreground alert is repeating, stop the
+    // interval so it doesn't keep running pointlessly (it can't fire once the
+    // tab is gone anyway, but this avoids leaking the timer while it's open).
+    return () => stopForegroundAlertLoop();
   }, [userId]);
 
   async function handleEnable() {

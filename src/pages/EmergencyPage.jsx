@@ -16,13 +16,23 @@ function buildMessage(profile, mapsUrl, userId, contactName) {
 }
 
 // Try to get the finder's current location (best-effort, non-blocking).
+// Starts as soon as the page loads (before any Alert tap) so it's usually
+// ready by the time the user actually taps Alert a few seconds later.
 function getLocation() {
   return new Promise((resolve) => {
     if (!navigator.geolocation) return resolve(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve(`https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`),
-      () => resolve(null),
-      { timeout: 5000 }
+      () => {
+        // First attempt failed/timed out (e.g. high-accuracy GPS took too long) —
+        // retry once with relaxed accuracy so we still have a shot at a location.
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve(`https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`),
+          () => resolve(null),
+          { timeout: 8000, enableHighAccuracy: false }
+        );
+      },
+      { timeout: 5000, enableHighAccuracy: true }
     );
   });
 }
