@@ -19,7 +19,7 @@ const firebaseConfig = {
 // 👉 VAPID key for Web Push (FCM)
 // Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → "Generate key pair"
 // Paste the generated key string below.
-export const VAPID_KEY = "BB_8UC0JUYySIf9n58OK6w7nkhVKlzungx9Xuk9SLgVEc0GndRsIugLFizJt2qpUjHll8Hw3VYiGK-s-0yky4QA";
+export const VAPID_KEY = "PASTE_YOUR_VAPID_KEY_HERE";
 
 const app = initializeApp(firebaseConfig);
 
