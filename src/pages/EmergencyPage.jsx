@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { subscribeContactDevice } from '../lib/notifications';
 
 function cleanPhone(phone) {
   return (phone || '').replace(/[^\d+]/g, '');
@@ -35,8 +34,6 @@ export default function EmergencyPage() {
   const [mapsUrl, setMapsUrl] = useState(null);
   const [sendingSiren, setSendingSiren] = useState(false);
   const [sirenResult, setSirenResult] = useState(null); // 'sent' | 'none' | 'error'
-  const [subscribeState, setSubscribeState] = useState('idle'); // idle | working | done | error
-  const [subscribeError, setSubscribeError] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -106,18 +103,6 @@ export default function EmergencyPage() {
 
   function callContact(contact) {
     window.location.href = `tel:${cleanPhone(contact.phone)}`;
-  }
-
-  async function handleSubscribe() {
-    setSubscribeState('working');
-    setSubscribeError('');
-    try {
-      await subscribeContactDevice(userId);
-      setSubscribeState('done');
-    } catch (err) {
-      setSubscribeError(err.message || 'Could not enable alerts on this device.');
-      setSubscribeState('error');
-    }
   }
 
   if (status === 'loading') {
@@ -208,38 +193,6 @@ export default function EmergencyPage() {
               (with your current location, if shared) will open in that contact's number. Just hit Send.
               {mapsUrl ? '' : ' Location access was not available.'}
             </p>
-
-            <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
-              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px', lineHeight: 1.5 }}>
-                <strong>Are you one of {profile.name}'s emergency contacts?</strong> Enable this once on your
-                own phone so it rings with a loud siren whenever an alert is sent to you — even if this
-                page or app is closed.
-              </p>
-              {subscribeState === 'done' ? (
-                <div style={{
-                  textAlign: 'center', padding: '10px', borderRadius: 8, fontSize: 13,
-                  background: 'var(--green-tint, #E6F6EC)', color: 'var(--green, #1E8E4A)', fontWeight: 600
-                }}>
-                  ✓ Siren alerts enabled on this device
-                </div>
-              ) : (
-                <button
-                  onClick={handleSubscribe}
-                  disabled={subscribeState === 'working'}
-                  style={{
-                    width: '100%', padding: '12px', borderRadius: 9, border: '1.5px solid var(--line)',
-                    background: 'white', color: 'var(--ink)', fontWeight: 700, fontSize: 13.5
-                  }}
-                >
-                  {subscribeState === 'working' ? 'Enabling…' : '🔔 Enable siren alerts on this phone'}
-                </button>
-              )}
-              {subscribeState === 'error' && (
-                <p style={{ fontSize: 11.5, color: 'var(--red)', textAlign: 'center', marginTop: 8 }}>
-                  {subscribeError}
-                </p>
-              )}
-            </div>
           </div>
         </div>
       </div>
