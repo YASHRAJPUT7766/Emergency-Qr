@@ -18,29 +18,61 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-  const data = payload.data || {};
-  const title = data.title || "🚨 EMERGENCY ALERT";
-  const options = {
-    body: data.body || "Someone needs urgent help. Tap for details.",
+// One very long, near-continuous vibration pattern (buzz / pause / buzz...).
+// Repeated ~40 times = a couple minutes of buzzing per notification cycle;
+// the repost loop below re-triggers this on top of it every few seconds too,
+// so the phone feels like it's vibrating non-stop until the alert is opened.
+const LONG_VIBRATE_PATTERN = Array(40).fill([500, 200]).flat();
+
+// Bump this on every repost so tag+renotify forces a fresh alert each time
+// (same tag replaces the old one instead of stacking duplicates).
+let repeatCounter = 0;
+let repeatTimer = null;
+const REPEAT_MS = 3500; // fastest interval mobile OSes will reliably honor
+
+function showEmergencyNotification(title, body, url) {
+  return self.registration.showNotification(title || "🚨 EMERGENCY ALERT", {
+    body: body || "Someone needs urgent help. Tap for details.",
     icon: "/siren-icon.png",
     badge: "/siren-icon.png",
-    // 'siren' vibration pattern: long-short-long-short, repeated
-    vibrate: [400, 150, 400, 150, 400, 150, 400],
+    vibrate: LONG_VIBRATE_PATTERN,
     requireInteraction: true, // stays on screen until dismissed
+    silent: false,
     tag: "emergency-alert",
-    renotify: true,
-    data: { url: data.url || "/" },
-    actions: [
-      { action: "open", title: "View details" },
-    ],
-  };
-  self.registration.showNotification(title, options);
+    renotify: true, // forces sound+vibration again even though tag is reused
+    data: { url: url || "/", repeat: repeatCounter++ },
+    actions: [{ action: "open", title: "View details" }],
+  });
+}
+
+function startRepeatingAlert(title, body, url) {
+  stopRepeatingAlert();
+  showEmergencyNotification(title, body, url);
+  repeatTimer = setInterval(() => {
+    showEmergencyNotification(title, body, url);
+  }, REPEAT_MS);
+}
+
+function stopRepeatingAlert() {
+  if (repeatTimer) {
+    clearInterval(repeatTimer);
+    repeatTimer = null;
+  }
+}
+
+messaging.onBackgroundMessage((payload) => {
+  const data = payload.data || {};
+  // A service worker can be killed/restarted by the OS between pushes, so we
+  // can't rely on setInterval alone surviving forever — but while this worker
+  // instance is alive (which is most of the time once a push wakes it), this
+  // keeps renotifying every few seconds until the user taps it.
+  startRepeatingAlert(data.title, data.body, data.url);
 });
 
-// Tapping the notification opens (or focuses) the app
+// Tapping the notification: stop the repeat loop, close it, and open the app.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  stopRepeatingAlert();
   const url = event.notification.data?.url || "/";
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
