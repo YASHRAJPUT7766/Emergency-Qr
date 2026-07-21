@@ -32,10 +32,38 @@ export async function subscribeContactDevice(ownerUserId) {
     { merge: true }
   );
 
-  // Play the siren whenever a push arrives WHILE this tab is open (foreground)
-  onMessage(messaging, (payload) => {
-    playSiren();
+  // Play the siren whenever a push arrives WHILE this tab is open (foreground),
+  // and keep repeating it (siren + vibration) every ~3.5s until the user
+  // acknowledges the alert — mirrors the background service worker's repeat loop.
+  onMessage(messaging, () => {
+    startForegroundAlertLoop();
   });
 
   return token;
+}
+
+let foregroundRepeatTimer = null;
+
+function startForegroundAlertLoop() {
+  stopForegroundAlertLoop();
+  fireForegroundAlert();
+  foregroundRepeatTimer = setInterval(fireForegroundAlert, 3500);
+}
+
+function fireForegroundAlert() {
+  playSiren(3000);
+  if (navigator.vibrate) {
+    // Long buzz/pause pattern, re-triggered every cycle for a near-continuous feel.
+    navigator.vibrate([500, 200, 500, 200, 500, 200, 500]);
+  }
+}
+
+// Call this when the user acknowledges the alert (e.g. taps "I'm on it" /
+// opens the emergency page / dismisses it) to stop the repeating siren.
+export function stopForegroundAlertLoop() {
+  if (foregroundRepeatTimer) {
+    clearInterval(foregroundRepeatTimer);
+    foregroundRepeatTimer = null;
+  }
+  if (navigator.vibrate) navigator.vibrate(0);
 }
