@@ -1,71 +1,123 @@
-# Emergency QR — Setup Guide (Hinglish)
+# Emergency QR — Setup Guide
 
-Ye ek full working project hai:
-- **Signup/Login** (Firebase Auth)
-- **Dashboard** — apni details + 2-3 emergency contacts add karo
-- **QR Code** — auto-generate hota hai, download/print kar sakte ho
-- **Public Emergency Page** (`/e/:userId`) — QR scan karne pe ye khulta hai, koi login nahi chahiye
-- **"Alert" button (har contact ke saamne)** — dabate hi WhatsApp aur SMS ka choice aata hai. Jo chuno, us contact ke number pe pehle se likha hua emergency message leke WhatsApp/SMS app khul jaata hai — bas Send dabana hota hai.
+A full working project:
 
-Koi backend/server nahi hai — sab kuch client-side chalta hai (WhatsApp `wa.me` links aur `sms:` links use karke), isliye ye Vercel jaise static hosting pe seedha chal jaata hai. Firebase sirf Auth + Firestore (login aur profile data) ke liye use hota hai.
+- **Signup / Login** (Firebase Auth)
+- **Dashboard** — enter your details + up to 3 emergency contacts, see scan stats and contact responses
+- **QR Code** — auto-generated, downloadable, printable
+- **Public Emergency Page** (`/e/:userId`) — opens when the QR is scanned. No login required.
+- **Alert button** per contact — tap it, choose WhatsApp or SMS, and a pre-filled emergency
+  message (with the finder's live location, if available) opens ready to send.
+- **Siren push notification** — if the contact has enabled it once, their phone gets a loud,
+  hard-to-miss push alert the moment "Alert" is tapped — even if their phone is locked or the
+  app/tab is closed.
+- **Call button** — one tap to dial a contact directly.
+- **Medical info** — blood group, allergies, conditions, and current medications, shown on the
+  emergency page.
+- **Scan counter** — see how many times your QR has actually been scanned.
+- **"I'm on it" reply** — a link in every alert message lets the contact tell you they've seen it.
+
+No paid backend, no Twilio, no per-message cost. Everything runs on:
+- **Vercel** — static hosting + two small serverless functions (free tier is enough)
+- **Firebase** — Auth, Firestore, and Cloud Messaging (all free tier)
 
 ---
 
-## Step 1 — Firebase Project Banao
+## Step 1 — Firebase Console Setup
 
-1. https://console.firebase.google.com par jao → "Add project" → naam do (e.g. `emergency-qr`)
-2. Project ke andar:
-   - **Build → Authentication** → "Get started" → Email/Password enable karo
-   - **Build → Firestore Database** → "Create database" → production mode
-3. Web app add karo: Project settings → "Add app" → Web (`</>`) icon → naam do → aapko ek config object milega jaisा:
-```js
-const firebaseConfig = {
-  apiKey: "...",
-  authDomain: "...",
-  projectId: "...",
-  storageBucket: "...",
-  messagingSenderId: "...",
-  appId: "..."
-};
-```
-Ye `src/lib/firebase.js` file me paste karna hai.
+1. Go to https://console.firebase.google.com → open your project (or create one)
+2. **Build → Authentication** → Get started → enable Email/Password
+3. **Build → Firestore Database** → Create database → production mode
+4. **Web app config** — Project Settings (⚙️) → "Your apps" → add a Web app if you haven't,
+   copy the `firebaseConfig` object. This project already has it filled in at
+   `src/lib/firebase.js` — double check it matches your project.
 
-4. **Firestore rules deploy karo** (taaki public emergency page profile read kar sake, lekin sirf owner hi apna profile edit kar sake):
+### Enable Cloud Messaging (for the siren push alert)
+
+1. Project Settings → **Cloud Messaging** tab
+2. Under **Web Push certificates**, click **Generate key pair**
+3. Copy the key string and paste it into `src/lib/firebase.js`:
+   ```js
+   export const VAPID_KEY = "PASTE_YOUR_VAPID_KEY_HERE";
+   ```
+
+### Generate a service account (for the serverless functions)
+
+The `/api/send-alert`, `/api/log-scan`, and `/api/mark-responded` functions need
+admin access to Firestore + Cloud Messaging:
+
+1. Project Settings → **Service accounts** tab → **Generate new private key**
+2. This downloads a JSON file. **Do not commit this file to GitHub.**
+3. Open it and note three values: `project_id`, `client_email`, `private_key`
+
+---
+
+## Step 2 — Environment Variables (Vercel)
+
+In your Vercel project → **Settings → Environment Variables**, add:
+
+| Name | Value |
+|---|---|
+| `FIREBASE_PROJECT_ID` | the `project_id` from the service account JSON |
+| `FIREBASE_CLIENT_EMAIL` | the `client_email` from the service account JSON |
+| `FIREBASE_PRIVATE_KEY` | the `private_key` from the service account JSON (keep the `\n` characters as-is, paste the whole string in quotes) |
+
+Redeploy after adding these — the serverless functions read them at runtime.
+
+For local testing, create a `.env.local` file in the project root with the same three variables.
+
+---
+
+## Step 3 — Firestore Rules
+
+Deploy the included rules so the public emergency page can read profiles, and
+so contacts (without logging in) can subscribe their device for push alerts:
+
 ```bash
+npm install -g firebase-tools
 firebase login
-firebase init firestore   # existing project link karo, rules file me firestore.rules select karo
+firebase use yash-software
 firebase deploy --only firestore:rules,firestore:indexes
 ```
 
 ---
 
-## Step 2 — Local Test
+## Step 4 — Local Test
 
 ```bash
 npm install
 npm run dev
 ```
 
-`src/lib/firebase.js` me apna config paste karna mat bhoolna, warna Auth/Firestore kaam nahi karega.
+---
+
+## Step 5 — Deploy to Vercel
+
+1. Push this folder to GitHub
+2. https://vercel.com → **Add New Project** → import the repo
+3. Vercel auto-detects the Vite build (`npm run build`, output `dist`) — no changes needed
+4. Add the environment variables from Step 2
+5. Deploy
+
+The live URL becomes the base for every QR code (generated automatically on the Dashboard).
 
 ---
 
-## Step 3 — Vercel pe Deploy
+## How the Siren Alert Works
 
-1. Is folder ko GitHub pe push karo (ya Vercel CLI se seedha deploy karo)
-2. https://vercel.com par jao → "Add New Project" → GitHub repo import karo
-3. Vercel khud detect kar lega ki ye Vite project hai:
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-4. Deploy dabao — 1-2 min me live URL mil jayega (jaise `emergency-qr.vercel.app`)
+1. A contact opens the emergency page once (share them the `/e/:userId` link directly) and
+   taps **"Enable siren alerts on this phone."** This asks for notification permission —
+   a normal one-time browser prompt, nothing to install.
+2. Their device token is saved to Firestore under that profile.
+3. When someone scans the QR later and taps **Alert** for that contact, the page calls
+   `/api/send-alert`, which uses Firebase Cloud Messaging to push a high-priority notification
+   with vibration and sound to every subscribed device for that contact.
+4. WhatsApp/SMS still work independently of this — the siren is an extra layer, not a
+   replacement.
 
-CLI se deploy karna ho toh:
-```bash
-npm install -g vercel
-vercel
-```
-
-Deploy hone ke baad jo URL milega, wahi QR code me use hoga (Dashboard me profile save karte hi QR auto-generate ho jaata hai us URL ke hisaab se).
+This only works for a phone number that has explicitly subscribed. There's no way (and no
+legitimate way) to make an unrelated phone ring or notify without that person's permission —
+that's how phone security works everywhere, not a limitation specific to this app.
 
 ---
 
@@ -73,13 +125,23 @@ Deploy hone ke baad jo URL milega, wahi QR code me use hoga (Dashboard me profil
 
 ```
 emergency-qr/
+├── api/
+│   ├── send-alert.js        ← triggers the siren push notification
+│   ├── log-scan.js          ← increments the scan counter
+│   └── mark-responded.js    ← handles the "I'm on it" reply link
+├── public/
+│   ├── firebase-messaging-sw.js  ← service worker for background push
+│   └── siren-icon.png
 ├── src/
-│   ├── lib/firebase.js       ← yaha apna Firebase config daalna hai
+│   ├── lib/
+│   │   ├── firebase.js       ← your Firebase config + VAPID key go here
+│   │   ├── notifications.js  ← device subscription logic
+│   │   └── siren.js          ← in-browser siren sound generator
 │   ├── pages/
 │   │   ├── Signup.jsx
 │   │   ├── Login.jsx
-│   │   ├── Dashboard.jsx     ← details + contacts add karna, QR dikhana
-│   │   └── EmergencyPage.jsx ← public page jo QR scan pe khulta hai
+│   │   ├── Dashboard.jsx     ← details, contacts, QR, scan stats, responses
+│   │   └── EmergencyPage.jsx ← the public page opened by the QR scan
 │   ├── App.jsx
 │   └── main.jsx
 ├── firestore.rules
@@ -87,11 +149,8 @@ emergency-qr/
 └── package.json
 ```
 
-## Important Safety Note
+## Safety Note
 
-Button isliye rakha hai (bina button ke sirf scan pe auto-open nahi hota) kyunki:
-- Koi bhi random scan (curious log log, bots) false alarm trigger kar sakta hai
-- Ek clear tap se accidental alerts rukte hain
-- WhatsApp/SMS choose karne ke baad bhi wo respective app khulta hai jaha message pehle se likha hota hai — lekin final "Send" khud finder ko dabana hota hai, taaki koi cheez silently na chali jaaye
-
-Agar chaho toh button ko aur bhi bada/obvious bana sakte ho taaki emergency me 1 second me mil jaye.
+The Alert button requires a tap — it's intentionally not automatic on scan. This prevents
+false alarms from random or curious scans, while still getting help moving in seconds once
+someone chooses to act.
