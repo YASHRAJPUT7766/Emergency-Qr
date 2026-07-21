@@ -1,19 +1,37 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getMessaging, isSupported } from "firebase/messaging";
 
-// 👇 Yaha apna Firebase project config paste karo
+// 👉 Your Firebase project config
 // Firebase Console → Project Settings → General → Your apps → Web app
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyDqLThvBn19ajSG1uqeA6JtnouA5u1RxuM",
+  authDomain: "yash-software.firebaseapp.com",
+  databaseURL: "https://yash-software-default-rtdb.firebaseio.com",
+  projectId: "yash-software",
+  storageBucket: "yash-software.firebasestorage.app",
+  messagingSenderId: "333775666671",
+  appId: "1:333775666671:web:4f9cbca22a8200b3d78a1a",
+  measurementId: "G-F747YYSCWX",
 };
+
+// 👉 VAPID key for Web Push (FCM)
+// Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → "Generate key pair"
+// Paste the generated key string below.
+export const VAPID_KEY = "BB_8UC0JUYySIf9n58OK6w7nkhVKlzungx9Xuk9SLgVEc0GndRsIugLFizJt2qpUjHll8Hw3VYiGK-s-0yky4QA";
 
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Messaging only works in supported browsers (not older Safari, not in-app webviews sometimes)
+export async function getMessagingIfSupported() {
+  if (await isSupported()) {
+    return getMessaging(app);
+  }
+  return null;
+}
+
+export const firebaseConfigForServiceWorker = firebaseConfig;
