@@ -13,6 +13,13 @@ function PrivateRoute({ children }) {
   return user ? children : <Navigate to="/login" replace />;
 }
 
+// If already logged in, never show Landing/Login/Signup again — go straight to Dashboard.
+function PublicOnlyRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <FullscreenLoader />;
+  return user ? <Navigate to="/dashboard" replace /> : children;
+}
+
 function FullscreenLoader() {
   return (
     <div style={{
@@ -29,9 +36,9 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<PublicOnlyRoute><Landing /></PublicOnlyRoute>} />
+          <Route path="/signup" element={<PublicOnlyRoute><Signup /></PublicOnlyRoute>} />
+          <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           {/* Public route — this is what the QR code points to. No login required. */}
           <Route path="/e/:userId" element={<EmergencyPage />} />
