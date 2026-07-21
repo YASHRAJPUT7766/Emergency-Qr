@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { playSiren } from '../lib/siren';
 
 function cleanPhone(phone) {
   return (phone || '').replace(/[^\d+]/g, '');
@@ -63,8 +64,11 @@ export default function EmergencyPage() {
   async function handleAlertClick(contact) {
     setActiveContact(contact);
     setSirenResult(null);
-    // Fire the siren push notification immediately in the background,
-    // while the finder picks WhatsApp/SMS in the sheet below.
+    // Play a loud siren on THIS phone (the finder's) immediately — guaranteed,
+    // works with no network and no setup required from anyone.
+    playSiren(6000);
+    // Also try to push a siren notification to the contact's own phone, if
+    // they've enabled it. This is best-effort and depends on setup + network.
     setSendingSiren(true);
     try {
       const res = await fetch('/api/send-alert', {
@@ -224,14 +228,21 @@ export default function EmergencyPage() {
             </div>
 
             <div style={{
-              textAlign: 'center', fontSize: 12, marginBottom: 16, padding: '6px 10px',
+              textAlign: 'center', fontSize: 12, marginBottom: 8, padding: '8px 10px',
+              borderRadius: 8, background: 'var(--red-tint)', color: 'var(--red)', fontWeight: 700
+            }}>
+              🔊 Siren playing on this phone
+            </div>
+
+            <div style={{
+              textAlign: 'center', fontSize: 11.5, marginBottom: 16, padding: '6px 10px',
               borderRadius: 8, background: sirenResult === 'sent' ? 'var(--green-tint, #E6F6EC)' : '#F3F3F1',
               color: sirenResult === 'sent' ? 'var(--green, #1E8E4A)' : 'var(--ink-soft)'
             }}>
-              {sendingSiren && '🔔 Sending siren push notification…'}
-              {!sendingSiren && sirenResult === 'sent' && '✓ Siren alert sent to their phone'}
-              {!sendingSiren && sirenResult === 'none' && 'ℹ️ This contact has not enabled push alerts yet — WhatsApp/SMS will still reach them'}
-              {!sendingSiren && sirenResult === 'error' && '⚠️ Could not send push alert — WhatsApp/SMS will still reach them'}
+              {sendingSiren && 'Also sending a push alert to their phone…'}
+              {!sendingSiren && sirenResult === 'sent' && '✓ Push alert also sent to their phone'}
+              {!sendingSiren && sirenResult === 'none' && 'They haven\'t enabled push alerts on their phone yet — WhatsApp/SMS below will still reach them'}
+              {!sendingSiren && sirenResult === 'error' && 'Could not reach their phone directly — WhatsApp/SMS below will still work'}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

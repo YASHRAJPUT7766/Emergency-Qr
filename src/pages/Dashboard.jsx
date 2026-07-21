@@ -11,7 +11,7 @@ const BASE_URL = window.location.origin;
 const emptyProfile = {
   name: '', bloodGroup: '', note: '',
   allergies: '', conditions: '', medications: '',
-  contacts: [], scanCount: 0, responses: [],
+  contacts: [], contactTokens: [], scanCount: 0, responses: [],
 };
 
 const TABS = [
@@ -27,7 +27,7 @@ export default function Dashboard() {
   const [profile, setProfile] = useState(emptyProfile);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('profile');
-  const [linkPromptFor, setLinkPromptFor] = useState(null); // contact object, shows the WhatsApp/SMS choice sheet
+  const [linkPromptFor, setLinkPromptFor] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -56,37 +56,23 @@ export default function Dashboard() {
   const readyForQR = profile.name.trim() && profile.contacts.some(c => c.name && c.phone);
   const responses = [...(profile.responses || [])].sort((a, b) => new Date(b.respondedAt) - new Date(a.respondedAt));
 
-  if (loading) return null;
+  if (loading) return <FullscreenLoader />;
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--paper)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--paper)', width: '100%', boxSizing: 'border-box' }}>
       <TopBar onLogout={() => { signOut(auth); navigate('/'); }} />
 
-      <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 20px' }}>
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 16px', boxSizing: 'border-box' }}>
         <TabBar tab={tab} setTab={setTab} />
       </div>
 
-      <div style={{ maxWidth: 640, margin: '0 auto', padding: '20px 20px 60px' }}>
-        {tab === 'profile' && (
-          <ProfileTab profile={profile} onSave={saveProfile} />
-        )}
-
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '18px 16px 60px', boxSizing: 'border-box' }}>
+        {tab === 'profile' && <ProfileTab profile={profile} onSave={saveProfile} />}
         {tab === 'contacts' && (
-          <ContactsTab
-            profile={profile}
-            onSave={saveProfile}
-            userId={user.uid}
-            onSendSetupLink={setLinkPromptFor}
-          />
+          <ContactsTab profile={profile} onSave={saveProfile} userId={user.uid} onSendSetupLink={setLinkPromptFor} />
         )}
-
-        {tab === 'qr' && (
-          <QrTab emergencyUrl={emergencyUrl} readyForQR={readyForQR} />
-        )}
-
-        {tab === 'activity' && (
-          <ActivityTab profile={profile} responses={responses} />
-        )}
+        {tab === 'qr' && <QrTab emergencyUrl={emergencyUrl} readyForQR={readyForQR} />}
+        {tab === 'activity' && <ActivityTab profile={profile} responses={responses} />}
       </div>
 
       {linkPromptFor && (
@@ -97,6 +83,14 @@ export default function Dashboard() {
           onClose={() => setLinkPromptFor(null)}
         />
       )}
+    </div>
+  );
+}
+
+function FullscreenLoader() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-soft)' }}>
+      Loading…
     </div>
   );
 }
@@ -128,10 +122,10 @@ function ProfileTab({ profile, onSave }) {
 
   return (
     <SectionCard title="Your details" subtitle="Shown to whoever scans your QR code.">
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Row label="Full name">
           <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-            placeholder="Yash Sharma" required style={inputStyle} />
+            placeholder="Your name" required style={inputStyle} />
         </Row>
         <Row label="Blood group">
           <select value={form.bloodGroup} onChange={e => setForm({ ...form, bloodGroup: e.target.value })} style={inputStyle}>
@@ -204,56 +198,65 @@ function ContactsTab({ profile, onSave, userId, onSendSetupLink }) {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
 
-    // For any brand-new contact, immediately prompt to send them the setup link.
     if (newlyAdded.length) {
       onSendSetupLink(newlyAdded[0]);
     }
   }
 
+  const tokenCount = (profile.contactTokens || []).length;
+
   return (
-    <SectionCard title="Emergency contacts" subtitle="Up to 3 people. Each one needs to enable alerts once on their own phone.">
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <SectionCard title="Emergency contacts" subtitle="Up to 3 people. Each needs to enable alerts once on their own phone.">
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {contacts.map((c, i) => (
-          <div key={i} style={{ display: 'flex', gap: 8 }}>
+          <div key={i} style={{
+            display: 'flex', flexDirection: 'column', gap: 8,
+            padding: 12, background: '#FBFBFA', border: '1px solid var(--line)', borderRadius: 10
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-soft)' }}>Contact {i + 1}</span>
+              {contacts.length > 1 && (
+                <button type="button" onClick={() => removeContact(i)} style={removeBtnStyle}>Remove</button>
+              )}
+            </div>
             <input value={c.name} onChange={e => updateContact(i, 'name', e.target.value)}
-              placeholder="Contact name" style={{ ...inputStyle, flex: 1 }} />
+              placeholder="Contact name" style={inputStyle} />
             <input value={c.phone} onChange={e => updateContact(i, 'phone', e.target.value)}
-              placeholder="+91 98765 43210" style={{ ...inputStyle, flex: 1 }} />
-            {contacts.length > 1 && (
-              <button type="button" onClick={() => removeContact(i)} style={removeBtnStyle}>✕</button>
-            )}
+              placeholder="+91 98765 43210" inputMode="tel" style={inputStyle} />
           </div>
         ))}
         {contacts.length < 3 && (
           <button type="button" onClick={addContact} style={addBtnStyle}>+ Add another contact</button>
         )}
-        <button type="submit" disabled={saving} style={{ ...saveBtnStyle, marginTop: 8 }}>
+        <button type="submit" disabled={saving} style={saveBtnStyle}>
           {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save contacts'}
         </button>
       </form>
 
       {profile.contacts.length > 0 && (
-        <div style={{ marginTop: 22, borderTop: '1px solid var(--line)', paddingTop: 18 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Alert setup status</div>
+        <div style={{ marginTop: 20, borderTop: '1px solid var(--line)', paddingTop: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Siren alert setup</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 12 }}>
+            {tokenCount === 0 && 'No one has enabled alerts yet.'}
+            {tokenCount > 0 && tokenCount < profile.contacts.length && `${tokenCount} of ${profile.contacts.length} contacts have enabled alerts.`}
+            {tokenCount >= profile.contacts.length && 'All contacts have enabled alerts. ✓'}
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {profile.contacts.map((c, i) => (
               <div key={i} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
                 padding: '10px 12px', background: '#FBFBFA', border: '1px solid var(--line)', borderRadius: 9
               }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>{c.name}</div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-soft)' }}>{c.phone}</div>
                 </div>
                 <button type="button" onClick={() => onSendSetupLink(c)} style={ghostBtnStyle}>
-                  Send setup link
+                  Send link
                 </button>
               </div>
             ))}
           </div>
-          <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 10, lineHeight: 1.5 }}>
-            Sends a WhatsApp/SMS link the contact taps once to enable loud siren alerts on their phone.
-          </p>
         </div>
       )}
     </SectionCard>
@@ -284,7 +287,8 @@ function SetupLinkSheet({ contact, userId, ownerName, onClose }) {
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50
     }}>
       <div onClick={e => e.stopPropagation()} style={{
-        width: '100%', maxWidth: 480, background: 'white', borderRadius: '18px 18px 0 0', padding: '20px 20px 28px'
+        width: '100%', maxWidth: 480, background: 'white', borderRadius: '18px 18px 0 0',
+        padding: '20px 20px 28px', boxSizing: 'border-box'
       }}>
         <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, marginBottom: 2 }}>
           Send setup link to {contact.name}
@@ -315,15 +319,15 @@ function QrTab({ emergencyUrl, readyForQR }) {
     <SectionCard title="Your QR code" subtitle="Print it and stick it on your bike, bag, or ID.">
       {readyForQR ? (
         <div style={{ textAlign: 'center' }}>
-          <div style={{ background: 'white', padding: 20, borderRadius: 12, border: '1px solid var(--line)', display: 'inline-block' }}>
-            <QRCodeCanvas value={emergencyUrl} size={200} fgColor="#1A2332" level="H" />
+          <div style={{ background: 'white', padding: 16, borderRadius: 12, border: '1px solid var(--line)', display: 'inline-block' }}>
+            <QRCodeCanvas value={emergencyUrl} size={180} fgColor="#1A2332" level="H" />
           </div>
-          <div style={{ marginTop: 14, fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--ink-soft)', wordBreak: 'break-all', padding: '0 8px' }}>
+          <div style={{ marginTop: 14, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-soft)', wordBreak: 'break-all', padding: '0 4px' }}>
             {emergencyUrl}
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
-            <button onClick={() => downloadQR()} style={ghostBtnStyle}>Download PNG</button>
-            <a href={emergencyUrl} target="_blank" rel="noreferrer" style={{ ...ghostBtnStyle, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Preview page</a>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+            <button onClick={() => downloadQR()} style={{ ...ghostBtnStyle, width: '100%', padding: '12px', fontSize: 13.5 }}>Download PNG</button>
+            <a href={emergencyUrl} target="_blank" rel="noreferrer" style={{ ...ghostBtnStyle, width: '100%', padding: '12px', fontSize: 13.5, textDecoration: 'none', textAlign: 'center', boxSizing: 'border-box' }}>Preview page</a>
           </div>
         </div>
       ) : (
@@ -340,9 +344,9 @@ function QrTab({ emergencyUrl, readyForQR }) {
 
 function ActivityTab({ profile, responses }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <SectionCard title="Scan activity" subtitle="How many times your emergency page has been opened.">
-        <div style={{ textAlign: 'center', padding: '10px 0' }}>
+        <div style={{ textAlign: 'center', padding: '6px 0' }}>
           <div style={{ fontSize: 34, fontWeight: 900 }}>{profile.scanCount || 0}</div>
           <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>
             total scans{profile.lastScanAt ? ` · last on ${new Date(profile.lastScanAt).toLocaleString()}` : ''}
@@ -352,7 +356,7 @@ function ActivityTab({ profile, responses }) {
 
       <SectionCard title="Contact responses" subtitle="When a contact taps “I'm on it” after an alert, it shows up here.">
         {responses.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--ink-soft)', fontSize: 13, padding: '10px 0' }}>
+          <div style={{ textAlign: 'center', color: 'var(--ink-soft)', fontSize: 13, padding: '6px 0' }}>
             No responses yet.
           </div>
         ) : (
@@ -360,10 +364,10 @@ function ActivityTab({ profile, responses }) {
             {responses.map((r, i) => (
               <div key={i} style={{
                 display: 'flex', justifyContent: 'space-between', fontSize: 13,
-                padding: '9px 12px', background: 'var(--green-tint, #E6F6EC)', borderRadius: 8
+                padding: '9px 12px', background: 'var(--green-tint, #E6F6EC)', borderRadius: 8, gap: 8
               }}>
                 <span style={{ fontWeight: 600 }}>✓ {r.contact} is on it</span>
-                <span style={{ color: 'var(--ink-soft)' }}>{new Date(r.respondedAt).toLocaleString()}</span>
+                <span style={{ color: 'var(--ink-soft)', flexShrink: 0 }}>{new Date(r.respondedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             ))}
           </div>
@@ -379,17 +383,18 @@ function TopBar({ onLogout }) {
   return (
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '18px 24px', borderBottom: '1px solid var(--line)', background: 'white'
+      padding: '14px 16px', borderBottom: '1px solid var(--line)', background: 'white',
+      boxSizing: 'border-box'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{
-          width: 30, height: 30, borderRadius: 8, background: 'var(--red)',
+          width: 28, height: 28, borderRadius: 7, background: 'var(--red)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'white', fontWeight: 900, fontSize: 14
+          color: 'white', fontWeight: 900, fontSize: 13, flexShrink: 0
         }}>+</div>
-        <span style={{ fontWeight: 800, fontSize: 15 }}>Emergency QR</span>
+        <span style={{ fontWeight: 800, fontSize: 14.5 }}>Emergency QR</span>
       </div>
-      <button onClick={onLogout} style={{ background: 'none', border: 'none', fontSize: 14, fontWeight: 600, color: 'var(--ink-soft)' }}>
+      <button onClick={onLogout} style={{ background: 'none', border: 'none', fontSize: 13.5, fontWeight: 600, color: 'var(--ink-soft)', padding: 4 }}>
         Log out
       </button>
     </div>
@@ -398,14 +403,14 @@ function TopBar({ onLogout }) {
 
 function TabBar({ tab, setTab }) {
   return (
-    <div style={{ display: 'flex', gap: 4, marginTop: 18, borderBottom: '1px solid var(--line)' }}>
+    <div style={{ display: 'flex', gap: 2, marginTop: 14, borderBottom: '1px solid var(--line)', overflowX: 'auto' }}>
       {TABS.map(t => (
         <button
           key={t.id}
           onClick={() => setTab(t.id)}
           style={{
-            padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 13.5, fontWeight: 700,
+            padding: '9px 12px', background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 13, fontWeight: 700, flexShrink: 0,
             color: tab === t.id ? 'var(--ink)' : 'var(--ink-soft)',
             borderBottom: tab === t.id ? '2px solid var(--red)' : '2px solid transparent',
             marginBottom: -1,
@@ -420,9 +425,9 @@ function TabBar({ tab, setTab }) {
 
 function SectionCard({ title, subtitle, children }) {
   return (
-    <div style={{ background: 'white', border: '1px solid var(--line)', borderRadius: 16, padding: 24 }}>
-      <h2 style={{ fontSize: 17, fontWeight: 800, margin: '0 0 4px' }}>{title}</h2>
-      <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', margin: '0 0 20px' }}>{subtitle}</p>
+    <div style={{ background: 'white', border: '1px solid var(--line)', borderRadius: 14, padding: '18px 16px', boxSizing: 'border-box' }}>
+      <h2 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px' }}>{title}</h2>
+      <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 16px', lineHeight: 1.4 }}>{subtitle}</p>
       {children}
     </div>
   );
@@ -430,8 +435,8 @@ function SectionCard({ title, subtitle, children }) {
 
 function Row({ label, children }) {
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-soft)' }}>{label}</span>
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)' }}>{label}</span>
       {children}
     </label>
   );
@@ -451,23 +456,24 @@ function downloadQR() {
 }
 
 const inputStyle = {
-  padding: '11px 13px', borderRadius: 8, border: '1.5px solid var(--line)',
-  background: '#FBFBFA', fontSize: 14.5, color: 'var(--ink)',
+  width: '100%', boxSizing: 'border-box',
+  padding: '11px 12px', borderRadius: 8, border: '1.5px solid var(--line)',
+  background: 'white', fontSize: 14.5, color: 'var(--ink)',
 };
 const removeBtnStyle = {
-  border: '1.5px solid var(--line)', background: 'white', borderRadius: 8,
-  width: 40, color: 'var(--red)', fontSize: 14,
+  border: 'none', background: 'none', color: 'var(--red)', fontSize: 12, fontWeight: 600, padding: 2,
 };
 const addBtnStyle = {
-  marginTop: 4, background: 'none', border: 'none', color: 'var(--red)',
+  background: 'none', border: 'none', color: 'var(--red)',
   fontWeight: 600, fontSize: 13.5, padding: 0, textAlign: 'left',
 };
 const saveBtnStyle = {
-  marginTop: 8, padding: '13px', borderRadius: 9, border: 'none',
+  width: '100%', boxSizing: 'border-box',
+  padding: '13px', borderRadius: 9, border: 'none',
   background: 'var(--ink)', color: 'white', fontWeight: 700, fontSize: 15,
 };
 const ghostBtnStyle = {
   padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--line)',
   background: 'white', color: 'var(--ink)', fontWeight: 600, fontSize: 12.5,
-  whiteSpace: 'nowrap', flexShrink: 0,
+  whiteSpace: 'nowrap', flexShrink: 0, boxSizing: 'border-box',
 };

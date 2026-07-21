@@ -87,11 +87,13 @@ function friendlyError(code) {
 }
 
 export const inputStyle = {
+  width: '100%', boxSizing: 'border-box',
   padding: '12px 14px', borderRadius: 9, border: '1.5px solid var(--line)',
   background: 'white', fontSize: 15, color: 'var(--ink)',
 };
 
 export const submitStyle = {
+  width: '100%', boxSizing: 'border-box',
   marginTop: 6, padding: '13px', borderRadius: 9, border: 'none',
   background: 'var(--ink)', color: 'white', fontWeight: 700, fontSize: 15,
 };
