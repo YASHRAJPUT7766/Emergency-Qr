@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getMessaging, isSupported } from "firebase/messaging";
 
@@ -24,6 +24,8 @@ export const VAPID_KEY = "BB_8UC0JUYySIf9n58OK6w7nkhVKlzungx9Xuk9SLgVEc0GndRsIug
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
+// Keep the user logged in across browser restarts until they explicitly log out.
+setPersistence(auth, browserLocalPersistence);
 export const db = getFirestore(app);
 
 // Messaging only works in supported browsers (not older Safari, not in-app webviews sometimes)
